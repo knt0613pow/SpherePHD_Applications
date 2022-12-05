@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import cv2
+import pickle
+from tqdm import tqdm
 #from utils import *
 from makedata import *
 from maketable import *
@@ -17,6 +19,17 @@ class DataLoader():
         self.dataset = []
         self.label = []
         cnt = 1
+        dict = unpickle(dir_path)
+        
+        self.label = dict[b'fine_labels']
+        imgs = dict[b'data']
+        
+        with tqdm(total=imgs.shape[0]) as pbar:
+            for row_img in imgs:
+                img = row_img.reshape(3,32,32).transpose(1,2,0)
+                self.dataset.append(pano2icosa(img, subdivision))
+                pbar.update(1)
+        '''
         for num in range(10):
             for file in sorted(os.listdir(dir_path+"/"+str(num)+"/")):
                 if file[-4:] == '.png' or file[-4:] == '.jpg':
@@ -28,7 +41,7 @@ class DataLoader():
                     print('Process %05d pictures..\r' %cnt, end='')
                     cnt += 1
                     self.label.append(num)
-
+'''
         self.dataset = np.array(self.dataset) # shape = (N, 4**8 * 20, 3)
         self.dataset = self.dataset / 255
         self.label = np.array(self.label)
@@ -59,17 +72,20 @@ class DataLoader():
         print('')
         return np.array(ret)
 '''
+def unpickle(file):
+    with open(file, 'rb') as fo:
+        dict = pickle.load(fo, encoding='bytes')
+    return dict
 
 def main():
-    train_data = DataLoader('./mnist_png/training', 3)
-
-    #np.save('./train_data.npy', train_data.dataset)
-    #np.save('./train_label.npy',train_data.label)
+    train_data = DataLoader('./dataset/cifar-100-python/train', 4)
+    np.save('./cifar100_train_data.npy', train_data.dataset)
+    np.save('./cifar100_train_label.npy',train_data.label)
     print('')
-
-    #test_data = DataLoader('./mnist_png/testing', 3)
-    #np.save('./test_data.npy', test_data.dataset)
-    #np.save('./test_label.npy', test_data.label)
+    del train_data
+    test_data = DataLoader('./dataset/cifar-100-python/test', 4)
+    np.save('./cifar100_test_data.npy', test_data.dataset)
+    np.save('./cifar100_test_label.npy', test_data.label)
     print('')
 
 if __name__ == '__main__':

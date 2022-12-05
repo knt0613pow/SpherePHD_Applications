@@ -59,20 +59,21 @@ class SpherePHD():
         self.config.gpu_options.per_process_gpu_memory_fraction = 1
         self.config.gpu_options.allow_growth = True
 
-    def simple_cnn(self, subdivision):
+    def simple_cnn(self, subdivision, path):
         self.conv_tables = []
         self.adj_tables = []
         for i in range(0, subdivision+1):
             self.conv_tables.append(make_conv_table(i))
             self.adj_tables.append(make_adjacency_table(i))
-            
+        
+        self.path = path
         self.pooling_tables = make_pooling_table(subdivision+1)
         self.image_size = 20 * 4 ** subdivision 
         self.subdivision = subdivision
         self.num_epochs = 10
         self.num_steps = 3000
         self.batch_size = 20
-        self.model = MNIST_net(self.conv_tables, self.adj_tables, self.pooling_tables, subdivision)
+        self.model = CIFAR_net(self.conv_tables, self.adj_tables, self.pooling_tables, subdivision)
         self.loss_function = torch.nn.CrossEntropyLoss()
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-1)  # lr hand-tuned
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -86,11 +87,12 @@ class SpherePHD():
         loss_function = self.loss_function
         epochs = self.num_epochs
         model = self.model
+        path = self.path
         
-        train_data = np.array(list(np.transpose(np.load("./train_data.npy"),(0,2,1))[:,:,None,:]))
-        train_label = np.array(list(np.load("./train_label.npy")))
-        test_data = np.array(list(np.transpose(np.load("./test_data.npy"),(0,2,1))[:,:,None,:]))
-        test_label = np.array(list(np.load("./test_label.npy")))   
+        train_data = np.array(list(np.transpose(np.load(path+"/train_data.npy"),(0,2,1))[:,:,None,:]))
+        train_label = np.array(list(np.load(path+"/train_label.npy")))
+        test_data = np.array(list(np.transpose(np.load(path+"/test_data.npy"),(0,2,1))[:,:,None,:]))
+        test_label = np.array(list(np.load(path+"/test_label.npy")))   
         
         print("image shape: ",train_data.shape)
         train_dataset = TensorDataset(torch.Tensor(train_data),torch.tensor(train_label,dtype=torch.long))
@@ -100,6 +102,12 @@ class SpherePHD():
         ##Train
         start = time.time()
         trainloss = []
+        
+        fmodel=path+"/model.pt"
+        floss =path+"/loss" #npy
+        fpred =path+"/prediction.txt" #npy
+        
+        minloss = np.inf
         
         for epoch in range(self.num_epochs) :
             loss_sum = 0
@@ -119,13 +127,15 @@ class SpherePHD():
                     pbar.update(1)
                 
                 trainloss.append(loss_sum/train_data.shape[0])
-
+                
             print("Training Loss: {}".format(trainloss[-1]))
+            if minloss>trainloss[-1]:
+                torch.save(model.state_dict(), fmodel)
                 
                 
         end = time.time()
         print("Time ellapsed in training is: {}".format(end - start))
-        
+        np.save(floss, trainloss)
         ##Test
         test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
         
@@ -143,8 +153,12 @@ class SpherePHD():
             total += labels.size(0)
             
         print('[Test set] Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(test_loss /total, correct, total, 100. * correct / total))
-        print('Model saved in path: %s' % save_path)
-        print('Training finished')
+        
+        with open(fpred, "w") as f:
+            f.write("Time ellapsed in training is: {}".format(end - start))
+            f.write('[Test set] Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(test_loss /total, correct, total, 100. * correct / total))
+        
+        print('Finished')
 
     def print_test(self, sess, epoch, save_img=False):
 
@@ -205,10 +219,10 @@ class SpherePHD():
 
 def main():
     
-    MNIST = SpherePHD()
-    MNIST.simple_cnn(SUBDIVISION)
-    MNIST.train()
-    MNIST.test()
+    CIFAR = SpherePHD()
+    CIFAR.simple_cnn(SUBDIVISION, path='./dataset/cifar-100-python')
+    CIFAR.train()
+#CIFAR.test()
     '''
     Stanford2D3D = SpherePHD()
     Stanford2D3D.autoencoder(SUBDIVISION)
