@@ -303,8 +303,10 @@ def main():
         #conv_table = make_conv_table(i)
         #np.save('./tables/conv_table_'+str(i)+'.npy', conv_table)
     pooling_table = make_pooling_table(1)
+    print(pooling_table)
     #np.save('./tables/pooling_table_'+str(i)+'.npy', pooling_table)
     adj_table = make_adjacency_table(1)
+    print(adj_table)
     upsample_table = make_upsample_table(pooling_table[0], adj_table)
 
 

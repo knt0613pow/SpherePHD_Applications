@@ -18,12 +18,35 @@ class MNIST_net(nn.Module) :
         div = self.div
         x = self.conv1(x, conv_table=self.conv_tables[div].T)
         x = PHD_maxpool(x, self.adj_tables[div].T, self.pooling_tables[div-1].T)
-
         x = self.conv2(x, conv_table=self.conv_tables[div-1].T)
         x = PHD_maxpool(x, self.adj_tables[div-1].T, self.pooling_tables[div-2].T)
         x = self.conv3(x, conv_table=self.conv_tables[div-2].T)
         out = PHD_avgpool(x)
         return out
+
+class CIFAR_net(nn.Module) :
+    def __init__(self, conv_tables, adj_tables, pooling_tables, div) :
+        super(CIFAR_net, self).__init__()
+        self.conv_tables = conv_tables
+        self.adj_tables = adj_tables
+        self.pooling_tables = pooling_tables
+        self.div = div
+        self.conv1 = PHD_conv2d(in_dim=3, out_dim=32, stride=1)
+        #self.pool1 = PHD_maxpool()
+        self.conv2 = PHD_conv2d(in_dim=32, out_dim=128, stride=1)
+        #self.pool2 = PHD_maxpool()
+        self.conv3 = PHD_conv2d(in_dim=128, out_dim=100, stride=1)
+        
+    def forward(self, x) :
+        div = self.div
+        x = self.conv1(x, conv_table=self.conv_tables[div].T)
+        x = PHD_maxpool(x, self.adj_tables[div].T, self.pooling_tables[div-1].T)
+        x = self.conv2(x, conv_table=self.conv_tables[div-1].T)
+        x = PHD_maxpool(x, self.adj_tables[div-1].T, self.pooling_tables[div-2].T)
+        x = self.conv3(x, conv_table=self.conv_tables[div-2].T)
+        out = PHD_avgpool(x)
+        return out
+
 
 
 '''
